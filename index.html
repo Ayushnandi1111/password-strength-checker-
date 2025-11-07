@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Password Strength Analyzer</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Fira+Code:wght@400;600;700&display=swap');
+        
+        /* Setting the body to a dark terminal theme */
+        body {
+            font-family: 'Fira Code', 'Monaco', 'Consolas', monospace; /* Use monospaced font */
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            /* Hacker Theme Colors */
+            background-color: #0d1117; /* Very dark background */
+        }
+        .container {
+            max-width: 500px;
+            width: 100%;
+            padding: 2.5rem;
+            border-radius: 0.5rem;
+            
+            /* Terminal Look */
+            background-color: #161b22; /* Slightly lighter inner background */
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.3), 0 0 5px rgba(0, 255, 0, 0.5); /* Neon Green Glow */
+            border: 1px solid #00ff00; /* Subtle green border */
+        }
+        /* Style for the Input field to match the console */
+        #passwordInput {
+            caret-color: #00ff00; /* Green cursor */
+        }
+        .progress-bar {
+            height: 10px;
+            border-radius: 9999px;
+            transition: width 0.3s ease-in-out, background-color 0.3s ease-in-out;
+        }
+    </style>
+</head>
+<body class="text-green-400">
+
+    <div class="container font-mono">
+        <h1 class="text-3xl font-bold text-green-400 mb-2">:: ACCESS SECURE NODE ::</h1>
+        <p class="text-green-300 mb-6">Enter passphrase to execute strength analysis protocol. Output is real-time.</p>
+
+        <div class="mb-6">
+            <label for="passwordInput" class="block text-sm font-medium text-green-400 mb-1">INPUT PASSPHRASE</label>
+            <div class="relative">
+                <input 
+                    type="password" 
+                    id="passwordInput" 
+                    class="w-full px-4 py-3 border border-green-700 bg-gray-800 text-green-300 rounded-md focus:ring-green-500 focus:border-green-500 text-lg pr-12"
+                    placeholder="[ENTER DATA]"
+                    oninput="analyzePassword()"
+                >
+                <button 
+                    type="button" 
+                    id="toggleVisibility"
+                    class="absolute inset-y-0 right-0 px-3 text-green-500 hover:text-green-300"
+                    onclick="togglePasswordVisibility()"
+                >
+                    <!-- Eye icon (Open) -->
+                    <svg id="eyeOpen" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                    <!-- Eye icon (Closed) -->
+                    <svg id="eyeClosed" class="w-6 h-6 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.815-3.328m4.981-.144A3 3 0 0112 12a3 3 0 01-3.792 2.75M21 12c-1.274 4.057-5.065 7-9.542 7a10.01 10.01 0 01-4.71-1.175"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M1 1l1.71 1.71M22.29 22.29L21 21"></path></svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Progress Bar and Score -->
+        <div id="scoreContainer" class="mb-6 hidden">
+            <p class="text-sm font-medium text-green-400 mb-2">STRENGTH RATING: <span id="scoreText" class="font-bold">0/100</span></p>
+            <div class="w-full bg-gray-700 rounded-full">
+                <div id="progressBar" class="progress-bar w-0 bg-red-600"></div>
+            </div>
+        </div>
+        
+        <!-- Conversational Feedback -->
+        <div id="feedbackBox" class="p-4 bg-gray-800 border-l-4 rounded-md hidden">
+            <div class="flex items-start space-x-3">
+                <span class="text-green-400 text-2xl">⚡</span>
+                <div>
+                    <p class="text-sm font-semibold text-green-400">ANALYSIS LOG:</p>
+                    <p id="feedbackText" class="text-green-300 text-md"></p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const passwordInput = document.getElementById('passwordInput');
+        const scoreContainer = document.getElementById('scoreContainer');
+        const scoreText = document.getElementById('scoreText');
+        const progressBar = document.getElementById('progressBar');
+        const feedbackBox = document.getElementById('feedbackBox');
+        const feedbackText = document.getElementById('feedbackText');
+        const eyeOpen = document.getElementById('eyeOpen');
+        const eyeClosed = document.getElementById('eyeClosed');
+
+        // Function to toggle password visibility
+        function togglePasswordVisibility() {
+            const isPassword = passwordInput.type === 'password';
+            passwordInput.type = isPassword ? 'text' : 'password';
+            eyeOpen.classList.toggle('hidden', !isPassword);
+            eyeClosed.classList.toggle('hidden', isPassword);
+        }
+
+        // Simple Entropy/Strength Calculator (Non-malicious/Educational)
+        function calculateStrength(password) {
+            let score = 0;
+            const length = password.length;
+            const requirements = [];
+
+            if (length > 0) {
+                scoreContainer.classList.remove('hidden');
+                feedbackBox.classList.remove('hidden');
+            } else {
+                scoreContainer.classList.add('hidden');
+                feedbackBox.classList.add('hidden');
+                return { score: 0, feedback: '', requirements: [] };
+            }
+
+            // 1. Length Bonus (Most important factor)
+            // Starts at 20 points, increases significantly past 12 characters.
+            if (length >= 15) {
+                score += 40;
+                requirements.push('Great Length: The longer, the better!');
+            } else if (length >= 12) {
+                score += 30;
+                requirements.push('Good Length: 12+ characters is recommended.');
+            } else if (length >= 8) {
+                score += 15;
+                requirements.push('Minimum Length: Try to get to 12 or more characters.');
+            } else {
+                requirements.push('Too Short: Aim for at least 8 characters.');
+            }
+
+            // 2. Character Set Bonuses (Complexity)
+            let hasLower = /[a-z]/.test(password);
+            let hasUpper = /[A-Z]/.test(password);
+            let hasNumber = /[0-9]/.test(password);
+            let hasSymbol = /[^A-Za-z0-9\s]/.test(password);
+
+            let charSetCount = 0;
+            if (hasLower) charSetCount++;
+            if (hasUpper) charSetCount++;
+            if (hasNumber) charSetCount++;
+            if (hasSymbol) charSetCount++;
+            
+            // Add points based on character set variety
+            score += charSetCount * 15;
+
+            if (!hasLower) requirements.push('Need Lowercase letters.');
+            if (!hasUpper) requirements.push('Need Uppercase letters.');
+            if (!hasNumber) requirements.push('Need Numbers.');
+            if (!hasSymbol) requirements.push('Need Special symbols (e.g., !@#$%^).');
+
+            // 3. Deduction for Common Patterns/Dictionary Words (Basic check only)
+            const commonPatterns = ['password', '123456', 'qwerty', 'admin', 'welcome', 'qazwsx', 'iloveyou', String(new Date().getFullYear())];
+            const lowerPassword = password.toLowerCase();
+            let isCommon = false;
+            for (const pattern of commonPatterns) {
+                if (lowerPassword.includes(pattern)) {
+                    score = Math.max(0, score - 30); // Significant deduction
+                    requirements.push(`Weakness Detected: Avoid common words or patterns like "${pattern}".`);
+                    isCommon = true;
+                    break;
+                }
+            }
+
+            // Clamp score between 0 and 100
+            score = Math.min(100, score);
+            score = Math.max(0, score);
+
+            let feedback;
+            if (score >= 90) {
+                feedback = "STATUS: ONLINE. Protocol suggests excellent security level. Resistance to brute-force attack is HIGH.";
+            } else if (score >= 70) {
+                feedback = "STATUS: SECURE. Good strength detected. Recommendation: Increase length or add more special characters for maximum resilience.";
+            } else if (score >= 40) {
+                feedback = "STATUS: ALERT. Strength is moderate. Password requires more length or variety to protect against dictionary attacks. Execute protocol 0x01 (Length/Variety boost).";
+            } else if (score > 0) {
+                feedback = "STATUS: WARNING. Low strength detected. Vulnerable to common attack vectors. Immediate action required.";
+            } else {
+                feedback = "STATUS: CRITICAL. Password is empty or extremely weak. Initialize security protocol 0x00 (Random Phrase Generation).";
+            }
+
+            return { score, feedback, requirements };
+        }
+
+        // Main analysis function called on input
+        function analyzePassword() {
+            const password = passwordInput.value;
+            const { score, feedback } = calculateStrength(password);
+
+            // Update UI
+            scoreText.textContent = `${score}/100`;
+            progressBar.style.width = `${score}%`;
+
+            // Remove existing border classes from feedback box
+            feedbackBox.classList.remove('border-red-600', 'border-yellow-500', 'border-green-500', 'border-green-300');
+            progressBar.classList.remove('bg-red-600', 'bg-yellow-500', 'bg-green-500', 'bg-green-300');
+
+            if (score >= 90) {
+                // Excellent: Bright Green/Teal
+                progressBar.classList.add('bg-green-300');
+                feedbackBox.classList.add('border-green-300');
+            } else if (score >= 70) {
+                // Good: Standard Green
+                progressBar.classList.add('bg-green-500');
+                feedbackBox.classList.add('border-green-500');
+            } else if (score >= 40) {
+                // Getting There: Warning Yellow
+                progressBar.classList.add('bg-yellow-500');
+                feedbackBox.classList.add('border-yellow-500');
+            } else {
+                // Weak/Critical: Alert Red
+                progressBar.classList.add('bg-red-600');
+                feedbackBox.classList.add('border-red-600');
+            }
+
+            feedbackText.innerHTML = feedback;
+        }
+
+        window.onload = analyzePassword; // Run on load to set initial state
+
+    </script>
+</body>
+</html>
